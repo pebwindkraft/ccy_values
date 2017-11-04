@@ -55,14 +55,23 @@ BLOCKCHAIN.INFO
 This part reads data from a file "bc_addresses.txt", which contains a bitcoin address and a description, separated by blanks. 
 
 1Q7aaagd5B9iobbbh83kSXVr7WWccc9g87 wallet_test_01
+
 1Q8aaagCEqMxobbbSeds5LK9MMRcccPWVc wallet_test_02
+
 1QEaaar4jr9AtbbbTXXRSEntZQFcccmTni wallet_test_03
+
 1QGaaazt57toRbbb5b5k64b52ZdccczKjS wallet_test_04
+
 1QHaaajaUmYS1bbbCM4psHbNVhvcccyoSN wallet_test_05
+
 1QKaaa6on2Fv7bbbgLkoaJzJY6dcccv7Nc wallet_test_06
+
 1QKaaaTi96gwUbbb45uivR6zbikcccBdVN wallet_test_07
+
 1QKaaaoaDksMebbbUndbg658RFQcccVhgo wallet_test_08
+
 1QKaaabKX1rN7bbbmEcUTMVvLDAccc8jFi wallet_test_09
+
 1QLaaa9ZCRiejbbbcsvpDjvNS6ZcccLuVP wallet_test_10
 
 
@@ -70,12 +79,18 @@ I haven’t tried more than 15, don’t know the limits yet. BLOCKCHAIN.INFO has
 It will show the bitcoins on each address, fetched from blockchain.info:
 
 Bitcoin Address                     Description       Amount     in Euro
+
 ===============                     ===========       ======     =======
+
 1Q7aaagd5B9iobbbh83kSXVr7WWccc9g87  wallet_test_01    4050          0.25
+
 1Q8aaagCEqMxobbbSeds5LK9MMRcccPWVc  wallet_test_02    0             0.00
+
 1QEaaar4jr9AtbbbTXXRSEntZQFcccmTni  wallet_test_03    12213         0.76
+
 1QGaaazt57toRbbb5b5k64b52ZdccczKjS  wallet_test_04    211313       13.23
 
+...
 
 
 Todos:

@@ -2,9 +2,7 @@
 ### an 'el cheapo' approach to display CCY values from coinmarketcap.com ###
 ############################################################################
 
-initial release.
-
-This software fetches data from coinmarketcap and blockchain.info via a shell script.
+This software fetches data from coinmarketcap.com and blockchain.info via a shell script.
 
 The "use case":
 ===============
@@ -32,7 +30,7 @@ Maybe one day this feature will be added :-)
 - yes ... 
 
 
-So basically this script loads data from two web pages, and displays it in a terminal and as a webpage in the users home directory. 
+So basically this script loads data from two web pages, and displays it in a terminal and also as a webpage "~/ccy_values.html". 
 
 
 COINMARKETCAP
@@ -44,15 +42,22 @@ Data is displayed in terminal window, so copy and paste into xls is easy.
 2.)
 an html file with some JavaScript is created, that can be loaded into a web browser.
 In the web browser you can enter amounts, and see a total over your investment. 
-(It works with cookies to store the sessions)
+(It works with html5 cookies to store the session data)
+The currencies that are fetched from coinmarketcap.com are in a file "~/.ccy_values/cmc_ccys.txt".
 
-The currencies that are fetched are "hard coded" in the script. Just duplicate the lines, and choose the currency of interest. I have tested up to 12 currencies, don't know the hard limits yet.
+bitcoin
+bitcoin-gold
+bitcoin-cash
+ethereum
+gridcoin
+
+I have tested up to 12 currencies, don't know the hard limits yet.
 
 
 BLOCKCHAIN.INFO
 ===============
 
-This part reads data from a file "bc_addresses.txt", which contains a bitcoin address and a description, separated by blanks. 
+This part reads data from a file "~/.ccy_values/bc_addresses.txt", which contains a bitcoin address and a description, separated by blanks. 
 
 1Q7aaagd5B9iobbbh83kSXVr7WWccc9g87 wallet_test_01
 
@@ -75,8 +80,9 @@ This part reads data from a file "bc_addresses.txt", which contains a bitcoin ad
 1QLaaa9ZCRiejbbbcsvpDjvNS6ZcccLuVP wallet_test_10
 
 
-I haven’t tried more than 15, don’t know the limits yet. BLOCKCHAIN.INFO has a 10 sec delay between each request.
+I haven’t tried more than 15 lines, don’t know the limits yet. BLOCKCHAIN.INFO has a 10 sec delay between each request.
 It will show the bitcoins on each address, fetched from blockchain.info:
+
 
 Bitcoin Address                     Description       Amount     in Euro
 
@@ -90,7 +96,6 @@ Bitcoin Address                     Description       Amount     in Euro
 
 1QGaaazt57toRbbb5b5k64b52ZdccczKjS  wallet_test_04    211313       13.23
 
-...
 
 
 Todos:

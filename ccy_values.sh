@@ -1,7 +1,27 @@
 #!/bin/sh
-#####################################################
-### an 'el cheapo' approach to display CCY values ###
-#####################################################
+############################################################
+### an 'el cheapo' approach to display CCY values        ###
+############################################################
+###                                                      ###
+### ...                                                  ###
+### nov2017 svn updated to use HTML5 localStorage Object ###
+### dec2017 svn updated to use file for coinmarketcap    ###
+###                                                      ###
+############################################################
+
+######################
+### some filenames ###
+######################
+typeset -r log_fn=~/.ccy_values/ccy_values.log
+typeset -r html_output_fn=~/ccy_index.html
+
+# coin market cap 
+typeset -r cmc_values_fqfn=~/.ccy_values/cmc_ccys.txt
+typeset -r tmp_cmc_fn=~/.ccy_values/tmp_cmc_$today.tmp
+
+# blockchain.info
+typeset -r bc_addresses_fqfn=~/.ccy_values/bc_addresses.txt
+typeset -r tmp_bci_fn=~/.ccy_values/tmp_bci_$today.tmp
 
 ###########################################################
 ### we store some date and time references in variables ###
@@ -10,24 +30,14 @@ today="`date '+%y%m%d%H%M'`"
 today_d="`date '+%Y-%B-%d'`"
 today_h="`date '+%H:%M'`"
 
-#########################
-### and some more ... ###
-#########################
-log_fn=~/.ccy_values/ccy_values.log
-html_output_fn=~/ccy_index.html
-# coin market cap 
-tmp_cmc_fn=~/.ccy_values/tmp_cmc_$today.tmp
-# blockchain.info
-tmp_bci_fn=~/.ccy_values/tmp_bci_$today.tmp
+typeset -i num_of_ccys=0
+typeset -i num_of_lines=0
+typeset -i sleeptime=11
 
-num_of_ccys=0
-num_of_lines=0
-
-#########################
-### procedure ...     ###
-#########################
+####################################################
+### procedure to fetch data from blockchain.info ###
+####################################################
 bci_values() {
-
   echo " "
   printf "%-35s %-17s %-10s %7s\n" "Bitcoin Address" Description Amount "in Euro" 
   printf "%-35s %-17s %-10s %7s\n" "===============" "===========" "======" "=======" 
@@ -39,11 +49,27 @@ bci_values() {
     in_Eur=$( echo "scale=2; $btc2eur * $cur_val / 100000000" | bc )
     env -i LC_ALL=C printf "%-35s %-17s %-10s %7.2f\n" $bc_addr $bc_desc $cur_val $in_Eur | tee -a $tmp_bci_fn 
     echo "  <tr align=left>" >> $html_output_fn
-    echo "   <td>$cur_val</td>\n   <td>$bc_addr</td>\n   <td>bitcoin core</td>\n   <td align=\"right\">$in_Eur</td>" >> $html_output_fn
+    echo "   <td>$cur_val</td>\n   <td>$bc_addr</td>\n   <td>$bc_desc </td>\n   <td align=\"right\">$in_Eur</td>" >> $html_output_fn
     echo "  </tr>" >> $html_output_fn
-    sleep 10
-   done < bc_addresses.txt
-  exit
+    sleep $sleeptime
+   done < $bc_addresses_fqfn
+  }
+
+######################################################
+### procedure to fetch data from coinmarketcap.com ###
+######################################################
+cmc_values() {
+  num_of_ccys=0
+  if [ -f $tmp_cmc_fn ] ; then
+    rm $tmp_cmc_fn
+  fi
+  while read line
+   do
+    cur_val=$( echo $line | cut -d " " -f 1 )
+    curl -s https://api.coinmarketcap.com/v1/ticker/$cur_val/?convert=EUR >> $tmp_cmc_fn
+    num_of_ccys=$(( $num_of_ccys + 1 ))
+    sleep .1
+   done < $cmc_values_fqfn
   }
 
 ###########################################################
@@ -51,8 +77,16 @@ bci_values() {
 ### Adding a currency means duplicating two lines below ###
 ### (curl -w https:// ... ), and replacing the ccy name ###
 ###########################################################
-if [ ! -d ~/.ccy_values ]; then
-  mkdir ~/.ccy_values
+if [ ! -d ~/.ccy_values ]; then mkdir ~/.ccy_values; fi
+if [ ! -f $cmc_values_fqfn ] ; then 
+  echo "file $cmc_values_fqfn missing, please create :-)"
+  echo "exiting gracefully..."
+  exit 1
+fi
+if [ ! -f $bc_addresses_fqfn ] ; then
+  echo "file $bc_addresses_fqfn missing, please create :-)"
+  echo "exiting gracefully..."
+  exit 1
 fi
 
 echo "$today_d"  > $log_fn
@@ -64,23 +98,35 @@ echo "##############################################"
 echo "### processing data from coinmarketcap.com ###"
 echo "##############################################"
 
+cmc_values
+
 # instead of "wget -q -O - https://..." (not available on MacOS) use curl:
-curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin/?convert=EUR       > $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin-gold/?convert=EUR >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin-cash/?convert=EUR >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/segwit2x/?convert=EUR     >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/ethereum/?convert=EUR     >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/aeon/?convert=EUR         >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/siacoin/?convert=EUR      >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
-curl -s https://api.coinmarketcap.com/v1/ticker/storjcoin-x/?convert=EUR  >> $tmp_cmc_fn
-num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin/?convert=EUR       > $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin-gold/?convert=EUR >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin-cash/?convert=EUR >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/segwit2x/?convert=EUR     >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/ethereum/?convert=EUR     >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/aeon/?convert=EUR         >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/iota/?convert=EUR         >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/siacoin/?convert=EUR      >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/storj/?convert=EUR        >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/tron/?convert=EUR         >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/grid/?convert=EUR         >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+# curl -s https://api.coinmarketcap.com/v1/ticker/gridcoin/?convert=EUR     >> $tmp_cmc_fn
+# num_of_ccys=$(( $num_of_ccys + 1 ))
+
+# extract the interesting part(s) 
 cat $tmp_cmc_fn | grep -e "symbol" -e "price_btc" -e "price_eur" | sed -e 's/"//g' -e 's/,/ /g' > $log_fn
 
 # need to extract data later on from coinmarketcap file ($tmp_cmc_fn) with tail ...
@@ -103,17 +149,14 @@ echo " font-family: verdana,arial,helvetica;" >> $html_output_fn
 echo " background-color: darkslategrey;" >> $html_output_fn
 echo " color: azure;" >> $html_output_fn
 echo " }" >> $html_output_fn
-echo ".TableTXT { " >> $html_output_fn
-echo " color: azure;" >> $html_output_fn
-echo " }" >> $html_output_fn
-echo ".TableTOTAL { " >> $html_output_fn
-echo " font-weight: bold;" >> $html_output_fn
-echo " }" >> $html_output_fn
-echo ".LastUpdated { " >> $html_output_fn
-echo " font-size:x-small;" >> $html_output_fn
-echo " }" >> $html_output_fn
+echo ".TableTXT { color: azure; }" >> $html_output_fn
+echo ".TableTOTAL { font-weight: bold; }" >> $html_output_fn
+echo ".LastUpdated { font-size:x-small; }" >> $html_output_fn
+echo "a:link { color: azure; text-decoration: none; }" >> $html_output_fn
+echo "a:visited { color: cadetblue; text-decoration: none; }" >> $html_output_fn
+echo "a:hover { color: orange; text-decoration: underline; font-weight:bold; }" >> $html_output_fn
 echo "</style>" >> $html_output_fn
-
+echo "   " >> $html_output_fn
 echo "</HEAD>" >> $html_output_fn
 echo "<BODY onload=\"initload()\">" >> $html_output_fn
 echo " <script>" >> $html_output_fn
@@ -162,7 +205,7 @@ echo "   document.getElementById(\"CCY_total\").innerHTML = CCY_total.toFixed(2)
 echo "  }" >> $html_output_fn
 echo " </script>" >> $html_output_fn
 
-echo "<h1>source: coinmarketcap.com</h1>" >> $html_output_fn
+echo "<h2>source: <a href=\"https://coinmarketcap.com\">coinmarketcap.com</a></h2>" >> $html_output_fn
 echo " <form action=\"ccy_index.html\" onsubmit=\"return calculate()\">" >> $html_output_fn
 echo "  <table border=\"0\" cellspacing=\"7\" cellpadding=\"1\" class=\"TableTXT\">" >> $html_output_fn
 echo "   <colgroup>" >> $html_output_fn
@@ -204,11 +247,11 @@ echo " </form>" >> $html_output_fn
 
 echo "#################################################"
 echo "### processing blockchain.info,               ###"
-echo "### with 10sec break between each request ... ###"
+echo "### with >10sec break between each request ... ###"
 echo "#################################################"
 echo "1 BTC = $btc2eur EUR" | tee $tmp_bci_fn
 
-echo "<h1>source: blockchain.info</h1>" >> $html_output_fn
+echo "<h2>source: <a href=\"https://blockchain.info\">blockchain.info</a></h2>" >> $html_output_fn
 echo " <table border=\"0\" cellspacing=\"7\" cellpadding=\"1\" class=\"TableTXT\">" >> $html_output_fn
 echo "  <colgroup>" >> $html_output_fn
 echo "   <col width=\"80\">\n   <col width=\"227\">\n   <col width=\"140\">\n   <col width=\"140\">" >> $html_output_fn
@@ -233,6 +276,11 @@ echo "</BODY>"  >> $html_output_fn
 echo "</HTML>"  >> $html_output_fn
 
 # clean up and bye 
+echo "cleaning up, deleting files "
+# echo "  rm $tmp_cmc_fn"
+# echo "  rm $tmp_bci_fn"
 rm $tmp_cmc_fn
 rm $tmp_bci_fn
+echo "bye ... "
+
 

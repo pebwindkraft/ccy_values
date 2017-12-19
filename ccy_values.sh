@@ -9,6 +9,13 @@
 ###                                                      ###
 ############################################################
 
+#################################################################
+### date and time references for use in filenames and webpage ###
+#################################################################
+today="`date '+%y%m%d%H%M'`"
+today_d="`date '+%Y-%B-%d'`"
+today_h="`date '+%H:%M'`"
+
 ######################
 ### some filenames ###
 ######################
@@ -23,13 +30,10 @@ typeset -r tmp_cmc_fn=~/.ccy_values/tmp_cmc_$today.tmp
 typeset -r bc_addresses_fqfn=~/.ccy_values/bc_addresses.txt
 typeset -r tmp_bci_fn=~/.ccy_values/tmp_bci_$today.tmp
 
-###########################################################
-### we store some date and time references in variables ###
-###########################################################
-today="`date '+%y%m%d%H%M'`"
-today_d="`date '+%Y-%B-%d'`"
-today_h="`date '+%H:%M'`"
-
+######################
+### some variables ###
+######################
+typeset -r num_of_greps=5
 typeset -i num_of_ccys=0
 typeset -i num_of_lines=0
 typeset -i sleeptime=11
@@ -67,6 +71,8 @@ cmc_values() {
    do
     cur_val=$( echo $line | cut -d " " -f 1 )
     curl -s https://api.coinmarketcap.com/v1/ticker/$cur_val/?convert=EUR >> $tmp_cmc_fn
+    cur_val=$( echo $line | cut -d " " -f 2 )
+    printf "\n%s\n" $cur_val >> $tmp_cmc_fn
     num_of_ccys=$(( $num_of_ccys + 1 ))
     sleep .1
    done < $cmc_values_fqfn
@@ -75,7 +81,7 @@ cmc_values() {
 ###########################################################
 ### here we start                                       ###
 ### Adding a currency means duplicating two lines below ###
-### (curl -w https:// ... ), and replacing the ccy name ###
+### (curl -w https:// ... ), and replacing the ccy name ###
 ###########################################################
 if [ ! -d ~/.ccy_values ]; then mkdir ~/.ccy_values; fi
 if [ ! -f $cmc_values_fqfn ] ; then 
@@ -100,45 +106,21 @@ echo "##############################################"
 
 cmc_values
 
-# instead of "wget -q -O - https://..." (not available on MacOS) use curl:
-# curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin/?convert=EUR       > $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin-gold/?convert=EUR >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/bitcoin-cash/?convert=EUR >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/segwit2x/?convert=EUR     >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/ethereum/?convert=EUR     >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/aeon/?convert=EUR         >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/iota/?convert=EUR         >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/siacoin/?convert=EUR      >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/storj/?convert=EUR        >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/tron/?convert=EUR         >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/grid/?convert=EUR         >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-# curl -s https://api.coinmarketcap.com/v1/ticker/gridcoin/?convert=EUR     >> $tmp_cmc_fn
-# num_of_ccys=$(( $num_of_ccys + 1 ))
-
 # extract the interesting part(s) 
-cat $tmp_cmc_fn | grep -e "symbol" -e "price_btc" -e "price_eur" | sed -e 's/"//g' -e 's/,/ /g' > $log_fn
+grep -e "id\":" -e "symbol" -e "price_btc" -e "price_eur" -e "https" $tmp_cmc_fn | sed -e 's/"//g' -e 's/,/ /g' > $log_fn
 
 # need to extract data later on from coinmarketcap file ($tmp_cmc_fn) with tail ...
-num_of_lines=$(( $num_of_ccys * 3 ))
+num_of_lines=$(( $num_of_ccys * $num_of_greps ))
 
-# create terminal output 
-tail -n $num_of_lines $log_fn | awk 'BEGIN { print "Currency (source: coinmarketcap.com)\tConversion Rate (Bitcoin)\tin EUR"} { ORS=""; print $2; if( NR % 3 == 0) print "\n"; else print "\t";}'
+# create terminal output 
+# tail -n $num_of_lines $log_fn | awk 'BEGIN { print "Currency (source: coinmarketcap.com)\tConversion Rate (Bitcoin)\tin EUR"} { ORS=""; if( NR % 4 != 1) print $2; if( NR % 4 == 0) print "\n"; else if( NR % 4 != 1) print "\t";}'
 
-btc2eur=$( head -n3 $log_fn | tail -n1 | cut -c 20-30 )
+awk 'BEGIN { print "Currency (source: coinmarketcap.com)\tConversion Rate (Bitcoin)\tin EUR"} { ORS=""; if( NR % 5 != 1) print $2; if( NR % 5 == 0) print "\n"; else if( NR % 5 != 1) print "\t";}' $log_fn
+
+btc2eur=$( head -n4 $log_fn | tail -n1 | cut -c 20-30 )
 
 ###############################
-### create http output file ### 
+### create http output file ### 
 ###############################
 echo "<HTML>\n<HEAD>" > $html_output_fn
 echo " <title>Crypto Currency Overview</title>" >> $html_output_fn
@@ -149,12 +131,14 @@ echo " font-family: verdana,arial,helvetica;" >> $html_output_fn
 echo " background-color: darkslategrey;" >> $html_output_fn
 echo " color: azure;" >> $html_output_fn
 echo " }" >> $html_output_fn
+echo ".h3 { color: orange; }" >> $html_output_fn
 echo ".TableTXT { color: azure; }" >> $html_output_fn
 echo ".TableTOTAL { font-weight: bold; }" >> $html_output_fn
 echo ".LastUpdated { font-size:x-small; }" >> $html_output_fn
 echo "a:link { color: azure; text-decoration: none; }" >> $html_output_fn
 echo "a:visited { color: cadetblue; text-decoration: none; }" >> $html_output_fn
-echo "a:hover { color: orange; text-decoration: underline; font-weight:bold; }" >> $html_output_fn
+# echo "a:hover { color: orange; text-decoration: underline; font-weight:bold; }" >> $html_output_fn
+echo "a:hover { color: orange; text-decoration: underline; }" >> $html_output_fn
 echo "</style>" >> $html_output_fn
 echo "   " >> $html_output_fn
 echo "</HEAD>" >> $html_output_fn
@@ -172,7 +156,7 @@ echo "   return null;" >> $html_output_fn
 echo "  }" >> $html_output_fn
 echo "  function initload() {" >> $html_output_fn
 tail -n $num_of_lines $log_fn | awk '{ ORS=""; \
- if( NR % 3 == 1)
+ if( NR % 5 == 2)
   {
    ccy=$2;
    print "   var "ccy"_qty=getCookie(\""ccy"_qty\");\n"
@@ -185,7 +169,7 @@ echo "  }" >> $html_output_fn
 echo "  function calculate() {" >> $html_output_fn
 echo "   var c_expires=\"; expires=Thu, 01 Feb 2027 00:00:00 UTC\";" >> $html_output_fn
 tail -n $num_of_lines $log_fn | awk '{ ORS=""; \
- if( NR % 3 == 1)
+ if( NR % 5 == 2)
   {
    ccy=$2;
    print "   var "ccy"_qty = document.getElementById(\""ccy"_qty\").value;\n"
@@ -200,12 +184,12 @@ tail -n $num_of_lines $log_fn | awk '{ ORS=""; \
   print "   var CCY_total = " ccy_total "\n"
 }' >> $html_output_fn
 
-# echo "   var CCY_total = BCH_result + BTC_result;" >> $html_output_fn
+# echo "   var CCY_total = BCH_result + BTC_result;" >> $html_output_fn
 echo "   document.getElementById(\"CCY_total\").innerHTML = CCY_total.toFixed(2);" >> $html_output_fn
 echo "  }" >> $html_output_fn
 echo " </script>" >> $html_output_fn
 
-echo "<h2>source: <a href=\"https://coinmarketcap.com\">coinmarketcap.com</a></h2>" >> $html_output_fn
+echo "<h3 class="h3">source: <a href=\"https://coinmarketcap.com\">coinmarketcap.com</a></h3>" >> $html_output_fn
 echo " <form action=\"ccy_index.html\" onsubmit=\"return calculate()\">" >> $html_output_fn
 echo "  <table border=\"0\" cellspacing=\"7\" cellpadding=\"1\" class=\"TableTXT\">" >> $html_output_fn
 echo "   <colgroup>" >> $html_output_fn
@@ -216,23 +200,22 @@ echo "    <th>Quantity</th>\n    <th>Currency</th>\n    <th>Conversion Rate (BTC
 echo "   </tr>" >> $html_output_fn
 echo "   <tr align=left>" >> $html_output_fn
 
-tail -n $num_of_lines $log_fn | awk '{ ORS=""; \
- if( NR % 3 == 1) 
-  { 
-   ccy=$2; 
+# tail -n $num_of_lines $log_fn | awk '{ ORS=""; \
+awk '{ ORS=""; \
+ if( NR % 5 == 1) { ccy_id=$2; }; 
+ if( NR % 5 == 2) { ccy=$2; };
+ if( NR % 5 == 3) { price_btc=$2 }; 
+ if( NR % 5 == 4) { price_eur=$2 }; 
+ if( NR % 5 == 0) {
    print "    <td><input type=\"text\" id=\""ccy"_qty\" size=\"4\" value=\"0\"></td>\n"
-   print "    <td>"ccy"</td>\n"
-  }; 
- if( NR % 3 == 2) 
-  { 
-   print "    <td>"$2"</td>\n"
-  }; 
- if( NR % 3 == 0) 
-  {
-   print "    <td><input type=\"hidden\" id=\""ccy"_conv\" value=\""$2"\">"$2"</td>\n" 
+   print "    <td><a href=\""
+   print $1 "\" target=\"_blank\">"ccy"</a></td>\n"
+   print "    <td><a href=\"https://coinmarketcap.com/currencies/"
+   print ccy_id"\" target=\"_blank\">"price_btc"</a></td>\n"
+   print "    <td><input type=\"hidden\" id=\""ccy"_conv\" value=\""price_eur"\">"price_eur"</td>\n" 
    print "    <td align=\"right\"><span id=\""ccy"_result\"></span></td>\n   </tr>\n   <tr>\n"
   }
-}' >> $html_output_fn
+}' $log_fn >> $html_output_fn
 
 echo "   <tr>" >> $html_output_fn
 echo "    <td></td><td></td><td></td><td></td><td align="right">=========</td>" >> $html_output_fn
@@ -245,13 +228,14 @@ echo "  </table>" >> $html_output_fn
 echo "  <input type=\"button\" onclick=\"calculate();\" value=\"go!\"/>" >> $html_output_fn
 echo " </form>" >> $html_output_fn
 
-echo "#################################################"
-echo "### processing blockchain.info,               ###"
+echo " "
+echo "##################################################"
+echo "### processing blockchain.info,                ###"
 echo "### with >10sec break between each request ... ###"
-echo "#################################################"
+echo "##################################################"
 echo "1 BTC = $btc2eur EUR" | tee $tmp_bci_fn
 
-echo "<h2>source: <a href=\"https://blockchain.info\">blockchain.info</a></h2>" >> $html_output_fn
+echo "<h3 class="h3">source: <a href=\"https://blockchain.info\">blockchain.info</a></h3>" >> $html_output_fn
 echo " <table border=\"0\" cellspacing=\"7\" cellpadding=\"1\" class=\"TableTXT\">" >> $html_output_fn
 echo "  <colgroup>" >> $html_output_fn
 echo "   <col width=\"80\">\n   <col width=\"227\">\n   <col width=\"140\">\n   <col width=\"140\">" >> $html_output_fn
@@ -275,7 +259,7 @@ echo "</font>" >> $html_output_fn
 echo "</BODY>"  >> $html_output_fn
 echo "</HTML>"  >> $html_output_fn
 
-# clean up and bye 
+# clean up and bye 
 echo "cleaning up, deleting files "
 # echo "  rm $tmp_cmc_fn"
 # echo "  rm $tmp_bci_fn"

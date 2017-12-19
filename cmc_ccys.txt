@@ -1,5 +1,5 @@
-bitcoin
-bitcoin-gold
-bitcoin-cash
-ethereum
-gridcoin
+bitcoin https://www.reddit.com/r/Bitcoin/new/
+bitcoin-gold https://false
+bitcoin-cash https://false
+segwit2x https://false
+ethereum https://www.reddit.com/r/ethereum/new/
